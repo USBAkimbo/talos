@@ -1,0 +1,189 @@
+# THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
+#
+# Generated on 2024-04-26T16:58:09Z by kres ebc009d-dirty.
+
+name: default
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+"on":
+  push:
+    branches:
+      - main
+      - release-*
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+      - release-*
+jobs:
+  default:
+    permissions:
+      actions: read
+      contents: write
+      issues: read
+      packages: write
+      pull-requests: read
+    runs-on:
+      - self-hosted
+      - generic
+    if: (!startsWith(github.head_ref, 'renovate/') && !startsWith(github.head_ref, 'dependabot/'))
+    services:
+      buildkitd:
+        image: moby/buildkit:v0.13.1
+        options: --privileged
+        ports:
+          - 1234:1234
+        volumes:
+          - /var/lib/buildkit/${{ github.repository }}:/var/lib/buildkit
+          - /usr/etc/buildkit/buildkitd.toml:/etc/buildkit/buildkitd.toml
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Unshallow
+        run: |
+          git fetch --prune --unshallow
+      - name: Set up Docker Buildx
+        id: setup-buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: remote
+          endpoint: tcp://127.0.0.1:1234
+        timeout-minutes: 10
+      - name: external-artifacts
+        run: |
+          make external-artifacts
+      - name: generate
+        run: |
+          make generate docs
+      - name: uki-certs
+        run: |
+          make uki-certs PLATFORM=linux/amd64
+      - name: check-dirty
+        run: |
+          make check-dirty
+      - name: build
+        run: |
+          make talosctl-all kernel sd-boot sd-stub initramfs installer imager talos _out/integration-test-linux-amd64 PLATFORM=linux/amd64,linux/arm64 IMAGE_REGISTRY=registry.dev.siderolabs.io PUSH=true
+      - name: lint
+        run: |
+          make lint
+      - name: talosctl-cni-bundle
+        run: |
+          make talosctl-cni-bundle
+      - name: iso
+        run: |
+          make iso secureboot-iso IMAGE_REGISTRY=registry.dev.siderolabs.io
+      - name: images-essential
+        run: |
+          make images-essential IMAGE_REGISTRY=registry.dev.siderolabs.io
+      - name: unit-tests
+        run: |
+          make unit-tests
+      - name: unit-tests-race
+        run: |
+          make unit-tests-race
+      - name: coverage
+        run: |
+          make coverage
+      - name: Generate executable list
+        run: |
+          find _out -type f -executable > _out/executable-artifacts
+      - name: save-artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: |
+            _out
+          retention-days: "5"
+  e2e-docker-short:
+    permissions:
+      actions: read
+      contents: write
+      issues: read
+      packages: write
+      pull-requests: read
+    runs-on:
+      - self-hosted
+      - generic
+    if: (!startsWith(github.head_ref, 'renovate/') && !startsWith(github.head_ref, 'dependabot/'))
+    needs:
+      - default
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Unshallow
+        run: |
+          git fetch --prune --unshallow
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: artifacts
+          path: _out
+      - name: Fix artifact permissions
+        run: |
+          xargs -a _out/executable-artifacts -I {} chmod +x {}
+      - name: e2e-docker
+        run: |
+          make e2e-docker IMAGE_REGISTRY=registry.dev.siderolabs.io SHORT_INTEGRATION_TEST=yes
+  e2e-iso:
+    permissions:
+      actions: read
+      contents: write
+      issues: read
+      packages: write
+      pull-requests: read
+    runs-on:
+      - self-hosted
+      - generic
+    if: (!startsWith(github.head_ref, 'renovate/') && !startsWith(github.head_ref, 'dependabot/'))
+    needs:
+      - default
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Unshallow
+        run: |
+          git fetch --prune --unshallow
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: artifacts
+          path: _out
+      - name: Fix artifact permissions
+        run: |
+          xargs -a _out/executable-artifacts -I {} chmod +x {}
+      - name: e2e-iso
+        run: |
+          sudo -E make e2e-iso IMAGE_REGISTRY=registry.dev.siderolabs.io
+  e2e-qemu-short:
+    permissions:
+      actions: read
+      contents: write
+      issues: read
+      packages: write
+      pull-requests: read
+    runs-on:
+      - self-hosted
+      - generic
+    if: (!startsWith(github.head_ref, 'renovate/') && !startsWith(github.head_ref, 'dependabot/'))
+    needs:
+      - default
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Unshallow
+        run: |
+          git fetch --prune --unshallow
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: artifacts
+          path: _out
+      - name: Fix artifact permissions
+        run: |
+          xargs -a _out/executable-artifacts -I {} chmod +x {}
+      - name: e2e-qemu
+        run: |
+          sudo -E make e2e-qemu IMAGE_REGISTRY=registry.dev.siderolabs.io SHORT_INTEGRATION_TEST=yes

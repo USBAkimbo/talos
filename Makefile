@@ -448,6 +448,11 @@ unit-tests: ## Performs unit tests.
 unit-tests-race: ## Performs unit tests with race detection enabled.
 	@$(MAKE) target-$@ TARGET_ARGS="--allow security.insecure" PLATFORM=linux/amd64
 
+
+.PHONY: coverage
+coverage:  ## Upload coverage data to codecov.io.
+	bash -c "bash <(curl -s https://codecov.io/bash) -f $(ARTIFACTS)/coverage.txt -X fix"
+
 $(ARTIFACTS)/$(INTEGRATION_TEST_DEFAULT_TARGET)-amd64:
 	@$(MAKE) local-$(INTEGRATION_TEST_DEFAULT_TARGET) DEST=$(ARTIFACTS) PLATFORM=linux/amd64 WITH_RACE=true NAME=Client PUSH=false
 

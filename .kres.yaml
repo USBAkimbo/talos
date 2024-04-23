@@ -1,0 +1,90 @@
+---
+kind: auto.CI
+spec:
+  compileGHWorkflowsOnly: true
+---
+kind: common.GHWorkflow
+spec:
+  jobs:
+    - name: default
+      setupBuildx: true
+      runners:
+        - self-hosted
+        - generic
+      steps:
+        - name: external-artifacts
+        - name: generate
+          command: generate docs
+        - name: uki-certs
+          arguments:
+            - PLATFORM=linux/amd64
+        - name: check-dirty
+        - name: build
+          command: talosctl-all kernel sd-boot sd-stub initramfs installer imager talos _out/integration-test-linux-amd64
+          arguments:
+            - PLATFORM=linux/amd64,linux/arm64
+            - IMAGE_REGISTRY=registry.dev.siderolabs.io
+            - PUSH=true
+        - name: lint
+        - name: talosctl-cni-bundle
+        - name: iso
+          command: iso secureboot-iso
+          arguments:
+            - IMAGE_REGISTRY=registry.dev.siderolabs.io
+        - name: images-essential
+          arguments:
+            - IMAGE_REGISTRY=registry.dev.siderolabs.io
+        - name: unit-tests
+        - name: unit-tests-race
+        - name: coverage
+        - name: save-artifacts
+          artifactStep:
+            type: upload
+            artifactPath: _out
+    - name: e2e-iso
+      depends:
+        - default
+      runners:
+        - self-hosted
+        - generic
+      steps:
+        - name: download-artifacts
+          artifactStep:
+            type: download
+            artifactPath: _out
+        - name: e2e-iso
+          withSudo: true
+          arguments:
+            - IMAGE_REGISTRY=registry.dev.siderolabs.io
+    - name: e2e-qemu-short
+      depends:
+        - default
+      runners:
+        - self-hosted
+        - generic
+      steps:
+        - name: download-artifacts
+          artifactStep:
+            type: download
+            artifactPath: _out
+        - name: e2e-qemu
+          withSudo: true
+          arguments:
+            - IMAGE_REGISTRY=registry.dev.siderolabs.io
+            - SHORT_INTEGRATION_TEST=yes
+    - name: e2e-docker-short
+      depends:
+        - default
+      runners:
+        - self-hosted
+        - generic
+      steps:
+        - name: download-artifacts
+          artifactStep:
+            type: download
+            artifactPath: _out
+        - name: e2e-docker
+          withSudo: false
+          arguments:
+            - IMAGE_REGISTRY=registry.dev.siderolabs.io
+            - SHORT_INTEGRATION_TEST=yes
