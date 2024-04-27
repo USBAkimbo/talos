@@ -30,6 +30,8 @@ curl -sL https://talos.dev/install | sh
 
 ### Download ISO Image
 
+If you need the QEMU guest agent so you can do guest 
+
 In order to install Talos in Proxmox, you will need the ISO image from the Talos release page.
 You can download `metal-amd64.iso` via
 [github.com/siderolabs/talos/releases](https://github.com/siderolabs/talos/releases)
@@ -45,6 +47,30 @@ For example version `{{< release >}}` for `linux` platform:
 mkdir -p _out/
 curl https://github.com/siderolabs/talos/releases/download/{{< release >}}/metal-amd64.iso -L -o _out/metal-amd64.iso
 ```
+
+### QEMU guest agent support
+- If you need the QEMU guest agent so you can do guest VM shutdowns of your Talos VMs, then you will need a custom ISO
+- To get this, navigate to https://factory.talos.dev/
+- Scroll down and select your Talos version (`1.7.0` for example)
+- Then tick the box for `siderolabs/qemu-guest-agent` and submit
+- This will provide you with a link to the bare metal ISO
+- The lines we're interested in are as follows
+
+```
+Metal ISO
+
+amd64 ISO
+    https://factory.talos.dev/image/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515/v1.7.0/metal-amd64.iso
+arm64 ISO
+    https://factory.talos.dev/image/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515/v1.7.0/metal-arm64.iso
+
+Installer Image
+
+For the initial Talos install or upgrade use the following installer image:
+factory.talos.dev/installer/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515:v1.7.0
+```
+
+- Download the ISO using the above URL
 
 ## Upload ISO
 
@@ -171,6 +197,25 @@ This will create several files in the `_out` directory: `controlplane.yaml`, `wo
 > ```
 >
 > Update `controlplane.yaml` and `worker.yaml` config files to point to the correct disk location.
+
+### QEMU guest agent support
+- If you followed the earlier steps to install using the ISO with QEMU guest aggent support, you will need to modify the `controlplane.yaml` and `worker.yaml` configs
+- You need to find the section that looks like this
+
+```
+  install:
+    disk: /dev/sda # The disk used for installations.
+    image: ghcr.io/siderolabs/installer:v1.7.0
+```
+
+- Modify the `image:` line to use the image provided by https://factory.talos.dev/ you generated earlier
+- For example:
+
+```
+  install:
+    disk: /dev/sda # The disk used for installations.
+    image: factory.talos.dev/installer/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515:v1.7.0
+```
 
 ## Create Control Plane Node
 
